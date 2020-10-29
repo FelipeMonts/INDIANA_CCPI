@@ -79,6 +79,8 @@ library(RColorBrewer)
 
 library(sf)
 
+library(openxlsx)
+
 ###############################################################################################################
 #                          load data from the .gdb ESRI file geodatabase
 ###############################################################################################################
@@ -194,3 +196,30 @@ writeOGR(INDIANA.SOILS, "INDIANA_CORNYLD.shp", layer="INDIANA_CORNYLD", driver="
 
 str(INDIANA.SOILS@data)
 str(INDIANA.Mukey.Corn$mukey.factor)
+
+####  Field  Soil Samples 
+
+Soil.Samples<-read.xlsx("C:\\Felipe\\VegetationPhotosynthesisRespirationModel\\IndianaSoilSamples.xlsx", sheet= "SoilSamplesIndiana", startRow = 1 ,colNames = T , cols= c(1,2), rows=c(seq(1,7)) );
+
+### Create Spatial points
+
+Soil.Samples.sp<-SpatialPointsDataFrame(coords=Soil.Samples, data=Soil.Samples, proj4string = CRS("+proj=longlat +datum=WGS84 +no_defs"))
+writeOGR(Soil.Samples.sp, "C:\\Users\\frm10\\Downloads\\SoilSamples.shp" , layer = "SoilSamples", driver="ESRI Shapefile" )
+
+
+
+
+# extract soil Mukesys from the points in the Soil samples
+Soil.Samples.sp.conus<-spTransform(Soil.Samples.sp, INDIANA.SOILS@proj4string)
+
+
+writeOGR(Soil.Samples.sp.conus, "C:\\Users\\frm10\\Downloads\\SoilSamples.conus.shp" , layer = "SoilSamplesConus", driver="ESRI Shapefile" )
+
+Soil.Samples.Surgo<-intersect(Soil.Samples.sp.conus,INDIANA.SOILS);
+
+Soil.Samples.Surgo.info<-INDIANA.Dom.Comp.uniq[which(INDIANA.Dom.Comp.uniq$mukey %in% Soil.Samples.Surgo@data$MUKEY),]
+ 
+
+Data.Soil.Samples<-merge(Soil.Samples.Surgo@data,Soil.Samples.Surgo.info, by.x='MUKEY', by.y= 'mukey' ) ;
+
+write.xlsx(Data.Soil.Samples, file="SoilSamplesData.xlsx")
